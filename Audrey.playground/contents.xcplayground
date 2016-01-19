@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<playground version='7.0' target-platform='osx' display-mode='raw'>
+    <pages>
+        <page name='Expressionism'/>
+        <page name='Sensualism'/>
+        <page name='Regex+Vanila'/>
+        <page name='Regex+Enum'/>
+        <page name='Regex+TypeErasure'/>
+    </pages>
+</playground>
