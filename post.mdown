@@ -1,0 +1,99 @@
+Let's say we want to get a better understanding of a sentence "Get me Uber to 430 Hayes Street". Cocoa provides us with several excellent tools allowing to tackle the task without ever hitting the network.
+
+# NSLinguisticTagger
+
+This class helps to extract useful information about the text. For example you can extract lemmas, parts of speech, language of the sentence etc. There are plenty use cases for this technology. I'd speculate that apps like [Fantastical](https://flexibits.com/fantastical) use this technology to understand user input better.
+
+As a toy example of linguistic tagger, imagine we are building a new hot social network, and we want to process text input, replacing all occurrences of various verbs with corresponding emojis. Assuming that we are bootstrapped, we can't afford doing it on the server. Let's do it client-side! Simple client-side mapping and find and replace should do. Let's say we are searching for "read" to replace it with "📚". A prefix search would also match "reading" and most other forms. But "to eat" is a little trickier: we might see "ate" and it still should be replaced with 🍽.
+
+That's where linguistic tagger comes handy:
+
+```swift
+let dictionary = ["read": "📚", "eat": "🍽"]
+let string = "I ate cornflakes for breakfast. I'm reading the newspaper every day."
+
+let options: NSLinguisticTaggerOptions = [.OmitPunctuation, .OmitWhitespace, .OmitOther, .JoinNames]
+let schemes = NSLinguisticTagger.availableTagSchemesForLanguage("en")
+let tagger = NSLinguisticTagger(tagSchemes: schemes, options: Int(options.rawValue))
+tagger.string = string
+let substitutions: [(Range<String.Index>, String)] = tagger.tagsInRange(string.entireStringRange, scheme: NSLinguisticTagSchemeLemma, options: options)
+    .flatMap { (range, tag) in
+        guard let emoji = dictionary[tag] else {
+            return nil
+        }
+        return (range, emoji)
+    }
+
+let result = string.stringBySubstituting(substitutions)
+print(result) // I 🍽 cornflakes for breakfast. I'm 📚 the newspaper every day.
+```
+
+Despite the use of couple of helper methods to make Foundation a bit more Swifty, this is a fairly straight-forward code:
+
+1. Get all the word stems with corresponding ranges.
+2. Map it to the emojis if registered
+3. Use obtained substitutions array to replace the text.
+
+For more information, [NSHipster](http://nshipster.com/nslinguistictagger/) has a good article to start with. `NSLinguisticTagger` provides very rich API and we will revisit it later.
+
+# NSDataDetector
+
+Next on our list is detecting various data types in the text. Ever noticed how Mail.app underlines event times or addresses, creating useful links? The ones you can tap to create events or open Maps.app? That's `NSDataDetector`. Let's say a startup außer decided to roll out a service to allow scheduled airport pick ups. The drivers will get a short message containing all the details of the passenger:
+
+> You are picking up John Smith tomorrow at 12:40pm, at San Francisco International Airport. The contact phone number is 4167188193. Flight UA460.
+
+Obviously, being an agile startup,  we will implement this functionality purely on the client-side. The simplest setup of `NSDataDetector` doesn't take much:
+
+```switch
+let types: NSTextCheckingType = [.TransitInformation, .PhoneNumber, .Date]
+let detector = try! NSDataDetector(types: types.rawValue)
+detector.enumerateMatchesInString(string, options: [], range: string.entireStringRange) { result, _, _ in
+	guard let result = result else {
+		return
+	}
+	if let phoneNumber = result.phoneNumber {
+		// phone number
+	} else if let date = textCheckingResult.date {
+		// event
+	} else if .... {
+		// more cases
+	}
+}
+```
+
+As you can see it's not the nicest API to consume. What if we leverage Swift `enum` since that is the actual semantics of the text checking result: it can't contain several data types at once. Then we hide the Cocoa binding inside of the failable initializer.
+
+```swift
+enum DetectedData {
+    case TransitInformation(airline: String?, flight: String)
+    case Event(date: NSDate, duration: NSTimeInterval?, timeZone: NSTimeZone?)
+    
+    init?(textCheckingResult: NSTextCheckingResult) {
+        if let components = textCheckingResult.components, flight = components[NSTextCheckingFlightKey] {
+            let airline = components[NSTextCheckingFlightKey]
+            self = .TransitInformation(airline: airline, flight: flight)
+        } else if let date = textCheckingResult.date {
+            self = .Event(date: date, duration: textCheckingResult.duration == 0 ? nil : textCheckingResult.duration, timeZone: textCheckingResult.timeZone)
+        } else {
+            return nil
+        }
+    }
+}
+
+detector.enumerateMatchesInString(string, range: string.entireStringRange) { data, range in
+    switch data {
+    case let .TransitInformation(airline, flight):
+	    // flight
+    case let .Event(date, duration, timeZone):
+	    // event
+    	// etc...
+    }
+    
+}
+
+```
+We just added a `enumerateMatchesInString` function and voula, we are consuming a much nicer API: just switch over the detected data to know what's your current type. The downside of using `enum`s, it's somewhat hard to have a property common to all enum cases. It would require a lot of code duplication, that's why I cheated and passed it as a second parameter (even though it would make more sense as a property on the data detected). Once again, [NSHipster](http://nshipster.com/nsdatadetector/) is a place to start your research with.
+
+# Putting it all together
+
+Now how do we build a modular API allowing us to parse text into tokens, and to choose plugins at the runtime?

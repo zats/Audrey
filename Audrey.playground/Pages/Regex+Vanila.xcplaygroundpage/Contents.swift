@@ -103,9 +103,15 @@ class Sequence: Regex {
     
     override func derive(char: Character) -> Regex {
         if first.isNullable {
-            return Choice(lhs: Sequence(first: first.derive(char), second: second), rhs: second.derive(char))
+            return Choice(
+                lhs: Sequence(
+                    first: first.derive(char),
+                    second: second),
+                rhs: second.derive(char))
         } else {
-            return Sequence(first: first.derive(char), second: second)
+            return Sequence(
+                first: first.derive(char),
+                second: second)
         }
     }
     

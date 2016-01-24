@@ -6,5 +6,6 @@
         <page name='Regex+Vanila'/>
         <page name='Regex+Enum'/>
         <page name='Regex+TypeErasure'/>
+        <page name='TypeErasedExpressionism'/>
     </pages>
 </playground>

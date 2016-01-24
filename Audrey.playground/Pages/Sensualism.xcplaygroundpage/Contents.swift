@@ -22,3 +22,25 @@ let plugins: [TokenizerPlugin] = [
 // Extract tokens
 let tokenizer = Tokenizer(plugins: plugins)
 let tokens = tokenizer.tokenize(query, fallbackPrefix: "Could you please ")
+
+
+enum Token {
+    case Lemma(original)
+    case LexicalClass(lexicalClass: LexicalClass)    
+}
+
+enum Context {
+    case Address(components: [String: String])
+    case PhoneNumber(phoneNumber: String)
+    case Link(URL: NSURL)
+    case Transit(airline: String?, flight: String?)
+}
+
+public enum LexicalClass {
+    case Verb
+    case Adjective
+    
+    public init?(_ value: String) {
+        return nil
+    }
+}
