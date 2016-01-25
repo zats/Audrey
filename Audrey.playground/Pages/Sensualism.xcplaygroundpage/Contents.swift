@@ -221,9 +221,9 @@ public struct DataDetectorPlugin: TokenizerPlugin {
 //MARK: - Tokenizer
 
 struct Tokenizer {
-    struct TokenResult {
+    struct Result {
         let text: String
-        let clusters: [Token]
+        let tokens: [Token]
     }
     
     let plugins: [TokenizerPlugin]
@@ -232,7 +232,7 @@ struct Tokenizer {
         self.plugins = plugins
     }
     
-    func process(text: String) -> TokenResult {
+    func process(text: String) -> Result {
         var hash: [RangeHash: Token] = [:]
         for plugin in plugins {
             for token in plugin.process(text) {
@@ -247,7 +247,7 @@ struct Tokenizer {
                 hash[rangeHash] = newToken
             }
         }
-        return TokenResult(text: text, clusters: hash.values.sort{ token1, token2 in token1.range.startIndex < token2.range.startIndex })
+        return Result(text: text, tokens: hash.values.sort{ token1, token2 in token1.range.startIndex < token2.range.startIndex })
     }
 }
 
@@ -296,4 +296,5 @@ let dataDetectorPlugin = DataDetectorPlugin(kinds: [.Address, .Date])
 let tokenizer = Tokenizer(plugins: [lemmaPlugin, lexicalClassPlugin, dataDetectorPlugin])
 
 let sampleText = "remind me to bring some socks tomorrow"
-tokenizer.process(sampleText).clusters.forEach{print($0)}
+tokenizer.process(sampleText).tokens.forEach{print($0)}
+
