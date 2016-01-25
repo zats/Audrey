@@ -15,3 +15,9 @@ extension NSRange {
         return Range<Int>(start: location, end: NSMaxRange(self))
     }
 }
+
+extension String {
+    var entireStringRange: NSRange {
+        return NSRange(location: 0, length: characters.count)
+    }
+}
